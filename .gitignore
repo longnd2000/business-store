@@ -1,0 +1,76 @@
+# ========================
+# OS & Editor Generated
+# ========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ========================
+# Dependencies
+# ========================
+node_modules/
+vendor/
+
+# ========================
+# Build / Compiled Output
+# ========================
+frontend/dist/
+frontend/dist-ssr/
+backend/public/build/
+backend/public/hot
+
+# ========================
+# Environment & Secrets
+# ========================
+backend/.env
+backend/.env.backup
+backend/.env.production
+*.key
+
+# ========================
+# Logs & Cache
+# ========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+backend/storage/logs/*.log
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/bootstrap/cache/*.php
+
+# ========================
+# Laravel Storage
+# ========================
+backend/public/storage
+backend/storage/pail
+
+# ========================
+# Testing
+# ========================
+backend/.phpunit.cache
+backend/.phpunit.result.cache
+coverage/
+
+# ========================
+# Package Locks (optional - uncomment if you don't want to track)
+# ========================
+# frontend/package-lock.json
+# backend/composer.lock
+
+# ========================
+# Misc
+# ========================
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
