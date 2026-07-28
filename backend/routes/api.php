@@ -5,28 +5,23 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AdminController;
 
+// Public APIs
 Route::get('/categories', [ProductController::class, 'categories']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
-
 Route::post('/orders', [OrderController::class, 'store']);
 
-Route::get('/admin/orders', [AdminController::class, 'orders']);
-Route::put('/admin/orders/{id}/status', [AdminController::class, 'updateStatus']);
-Route::get('/admin/stats', [AdminController::class, 'stats']);
+// Public API Auth: Đăng nhập lấy JWT Token
 Route::post('/admin/login', [AdminController::class, 'login']);
 
-// Admin Categories Management
-Route::get('/admin/categories', [AdminController::class, 'categories']);
-Route::post('/admin/categories', [AdminController::class, 'storeCategory']);
-Route::put('/admin/categories/{id}', [AdminController::class, 'updateCategory']);
-Route::delete('/admin/categories/{id}', [AdminController::class, 'deleteCategory']);
+// Protected APIs (Yêu cầu phải có Header Authorization: Bearer <jwt_token>)
+Route::middleware('jwt.auth')->prefix('admin')->group(function () {
+    Route::get('/me', [AdminController::class, 'me']);
+    Route::get('/orders', [AdminController::class, 'orders']);
+    Route::put('/orders/{id}/status', [AdminController::class, 'updateStatus']);
+    Route::get('/stats', [AdminController::class, 'stats']);
 
-// Admin Products Management
-Route::get('/admin/products', [AdminController::class, 'products']);
-Route::post('/admin/products', [AdminController::class, 'storeProduct']);
-Route::put('/admin/products/{id}', [AdminController::class, 'updateProduct']);
-Route::delete('/admin/products/{id}', [AdminController::class, 'deleteProduct']);
-
-// Admin Buyers Management
-Route::get('/admin/buyers', [AdminController::class, 'buyers']);
+    Route::get('/categories', [AdminController::class, 'categories']);
+    Route::get('/products', [AdminController::class, 'products']);
+    Route::get('/buyers', [AdminController::class, 'buyers']);
+});
