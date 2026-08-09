@@ -2,55 +2,68 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use App\Models\Category;
+use App\Repositories\Interfaces\IProductRepository;
+use App\Repositories\Interfaces\ICategoryRepository;
 use Illuminate\Http\Request;
 
 class StorefrontController extends Controller
 {
+    /**
+     * @var IProductRepository
+     */
+    protected $productRepository;
+
+    /**
+     * @var ICategoryRepository
+     */
+    protected $categoryRepository;
+
+    /**
+     * Inject các Repository tương ứng qua Constructor.
+     */
+    public function __construct(
+        IProductRepository $productRepository,
+        ICategoryRepository $categoryRepository
+    ) {
+        $this->productRepository = $productRepository;
+        $this->categoryRepository = $categoryRepository;
+    }
+
     public function home()
     {
-        $categories = Category::withCount('products')->get();
-        $featuredProducts = Product::with('category')->latest()->take(4)->get();
+        $categories = $this->categoryRepository->getCategoriesWithCount();
+        $featuredProducts = $this->productRepository->getFeaturedProducts(4);
         return view('store.home', compact('categories', 'featuredProducts'));
     }
 
     public function products(Request $request)
     {
-        $query = Product::with('category');
-        $categories = Category::all();
+        $categories = $this->categoryRepository->all();
         $selectedCategory = 'all';
 
         if ($request->has('category') && $request->query('category') !== 'all') {
-            $categorySlug = $request->query('category');
-            $selectedCategory = $categorySlug;
-            $query->whereHas('category', function ($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
-            });
+            $selectedCategory = $request->query('category');
         }
 
-        if ($request->has('q') && !empty($request->query('q'))) {
-            $search = $request->query('q');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        $products = $query->latest()->get();
+        $products = $this->productRepository->getFilteredProducts(
+            $request->query('category'),
+            $request->query('q')
+        );
 
         return view('store.products', compact('products', 'categories', 'selectedCategory'));
     }
 
     public function detail($id)
     {
-        $product = Product::with('category')->findOrFail($id);
-        $relatedProducts = Product::with('category')
-            ->where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
-            ->take(4)
-            ->get();
+        $product = $this->productRepository->find($id);
+
+        if (!$product) {
+            abort(404);
+        }
+
+        $relatedProducts = $this->productRepository->getRelatedProducts($product->category_id, $product->id, 4);
 
         return view('store.detail', compact('product', 'relatedProducts'));
     }
 }
+
