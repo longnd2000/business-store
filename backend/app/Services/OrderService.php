@@ -2,75 +2,114 @@
 
 namespace App\Services;
 
-use App\Constants\PaymentConstant;
-use App\Models\Product;
+use App\Services\Interfaces\IOrderService;
 use App\Repositories\Interfaces\IOrderRepository;
 use App\Repositories\Interfaces\IProductRepository;
-use App\Services\Interfaces\IOrderService;
-use App\Services\Payment\PaymentManagerService;
+use App\Repositories\Interfaces\IUserRepository;
+use App\Constants\OrderConstant;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class OrderService implements IOrderService
 {
-    public function __construct(
-        protected IOrderRepository $orderRepository,
-        protected IProductRepository $productRepository,
-        protected PaymentManagerService $paymentManager
-    ) {}
+    /**
+     * @var IOrderRepository
+     */
+    protected $orderRepository;
 
-    public function placeOrder(array $orderData): array
+    /**
+     * @var IProductRepository
+     */
+    protected $productRepository;
+
+    /**
+     * @var IUserRepository
+     */
+    protected $userRepository;
+
+    /**
+     * Inject các Repository tương ứng thông qua Constructor.
+     */
+    public function __construct(
+        IOrderRepository $orderRepository,
+        IProductRepository $productRepository,
+        IUserRepository $userRepository
+    ) {
+        $this->orderRepository = $orderRepository;
+        $this->productRepository = $productRepository;
+        $this->userRepository = $userRepository;
+    }
+
+    /**
+     * Tạo đơn hàng mới từ giỏ hàng hoặc request API.
+     *
+     * @param array $orderData
+     * @param array $items
+     * @return Order
+     * @throws \Exception
+     */
+    public function createOrder(array $orderData, array $items): Order
     {
-        $order = DB::transaction(function () use ($orderData) {
+        return DB::transaction(function () use ($orderData, $items) {
             $totalAmount = 0;
             $itemsToCreate = [];
 
-            foreach ($orderData['items'] as $itemData) {
-                /** @var Product $product */
-                $product = Product::lockForUpdate()->find($itemData['product_id']);
+            // 1. Kiểm tra tồn kho và chuẩn bị danh sách sản phẩm cần mua
+            foreach ($items as $item) {
+                $productId = $item['product_id'];
+                $quantity = $item['quantity'];
 
-                if (!$product || $product->stock < $itemData['quantity']) {
-                    throw new Exception("Sản phẩm " . ($product->name ?? 'không xác định') . " không đủ số lượng trong kho.");
+                $product = $this->productRepository->find($productId);
+
+                if (!$product || $product->stock < $quantity) {
+                    throw new \Exception("Sản phẩm " . ($product->name ?? 'không xác định') . " không đủ số lượng trong kho.");
                 }
 
-                // Trừ tồn kho qua ProductRepository
-                $this->productRepository->updateStock($product->id, $itemData['quantity']);
+                // Trừ kho
+                $product->decrement('stock', $quantity);
 
-                $subtotal = $product->price * $itemData['quantity'];
+                $subtotal = $product->price * $quantity;
                 $totalAmount += $subtotal;
 
                 $itemsToCreate[] = [
                     'product_id' => $product->id,
-                    'quantity' => $itemData['quantity'],
+                    'quantity' => $quantity,
                     'price' => $product->price
                 ];
             }
 
-            // Tạo đơn hàng qua OrderRepository
-            $newOrder = $this->orderRepository->create([
+            // 2. Kiểm tra/Tạo người dùng dựa trên số điện thoại (dành cho Web checkout)
+            $userId = auth()->id();
+            if (!$userId && isset($orderData['customer_phone'])) {
+                $user = $this->userRepository->findByEmail($orderData['customer_phone']);
+                if (!$user) {
+                    $user = $this->userRepository->createWithPassword([
+                        'name' => $orderData['customer_name'],
+                        'email' => $orderData['customer_phone'],
+                        'password' => 'a12345',
+                    ]);
+                }
+                $userId = $user->id;
+            }
+
+            // 3. Tạo Đơn hàng thông qua OrderRepository
+            $order = $this->orderRepository->create([
+                'user_id' => $userId,
                 'customer_name' => $orderData['customer_name'],
-                'customer_email' => $orderData['customer_email'],
+                'customer_email' => $orderData['customer_email'] ?? null,
                 'customer_phone' => $orderData['customer_phone'],
                 'shipping_address' => $orderData['shipping_address'],
                 'payment_method' => $orderData['payment_method'],
                 'total_amount' => $totalAmount,
-                'status' => PaymentConstant::STATUS_PENDING
+                'status' => OrderConstant::STATUS_PENDING
             ]);
 
-            foreach ($itemsToCreate as $item) {
-                $newOrder->items()->create($item);
+            // 4. Tạo chi tiết đơn hàng
+            foreach ($itemsToCreate as $orderItem) {
+                $order->items()->create($orderItem);
             }
 
-            return $newOrder;
+            return $order;
         });
-
-        // Xử lý thanh toán qua Payment Service tương ứng
-        $paymentGateway = $this->paymentManager->make($orderData['payment_method']);
-        $paymentResult = $paymentGateway->processPayment($order);
-
-        return [
-            'order' => $order->load('items.product'),
-            'payment' => $paymentResult
-        ];
     }
 }

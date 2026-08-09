@@ -2,18 +2,35 @@
 
 namespace App\Repositories;
 
-use App\Models\Order;
 use App\Repositories\Interfaces\IOrderRepository;
+use App\Models\Order;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class OrderRepository extends BaseRepository implements IOrderRepository
 {
-    public function setModel(): void
+    /**
+     * Định nghĩa model liên kết của Repository này là Order Model.
+     *
+     * @return Model
+     */
+    protected function resolveModel(): Model
     {
-        $this->model = app(Order::class);
+        return new Order();
     }
 
-    public function getOrdersByCustomerEmail(string $email): mixed
+    /**
+     * Lấy toàn bộ đơn hàng của user kèm các sản phẩm chi tiết.
+     *
+     * @param int $userId
+     * @return Collection
+     */
+    public function getPurchasedOrders(int $userId): Collection
     {
-        return $this->model->where('customer_email', $email)->with('items.product')->get();
+        return $this->model->where('user_id', $userId)
+                           ->with(['items.product', 'transactions'])
+                           ->latest()
+                           ->get();
     }
 }
+

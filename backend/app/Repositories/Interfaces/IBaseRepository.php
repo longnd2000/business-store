@@ -2,14 +2,30 @@
 
 namespace App\Repositories\Interfaces;
 
-/**
- * INTERFACE: Chỉ quy định các class Repository PHẢI CÓ những phương thức nào.
- */
+use Illuminate\Database\Eloquent\Model;
+
 interface IBaseRepository
 {
-    public function all(): mixed;
-    public function find(int $id): mixed;
-    public function create(array $data): mixed;
-    public function update(int $id, array $data): bool;
-    public function delete(int $id): bool;
+    /**
+     * Tìm một bản ghi theo ID.
+     *
+     * @param int $id
+     * @return Model|null
+     */
+    public function find(int $id): ?Model;
+
+    /**
+     * Lấy toàn bộ danh sách bản ghi.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function all();
+
+    /**
+     * Tạo mới một bản ghi.
+     *
+     * @param array $data
+     * @return Model
+     */
+    public function create(array $data): Model;
 }

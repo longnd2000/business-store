@@ -2,54 +2,62 @@
 
 namespace App\Repositories;
 
-use App\Repositories\Interfaces\IBaseRepository;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * ABSTRACT CLASS: Nơi tập trung LOGIC DÙNG CHUNG cho tất cả Repository.
- * Nhờ có class này, các class con (ProductRepository, UserRepository...) 
- * KHÔNG CẦN VIẾT LAỊ logic CRUD cơ bản.
- */
-abstract class BaseRepository implements IBaseRepository
+abstract class BaseRepository
 {
+    /**
+     * Đối tượng Model hiện tại.
+     *
+     * @var Model
+     */
     protected Model $model;
 
+    /**
+     * BaseRepository constructor.
+     */
     public function __construct()
     {
-        $this->setModel();
+        $this->model = $this->resolveModel();
     }
 
     /**
-     * Mỗi Repository con bắt buộc phải chỉ định Model tương ứng
+     * Phương thức trừu tượng buộc lớp con định nghĩa Model tương ứng.
+     *
+     * @return Model
      */
-    abstract public function setModel(): void;
+    abstract protected function resolveModel(): Model;
 
-    // --- CÁC LOGIC DÙNG CHUNG (COMMON LOGIC) ---
-
-    public function all(): mixed
-    {
-        return $this->model->all();
-    }
-
-    public function find(int $id): mixed
+    /**
+     * Tìm kiếm một bản ghi theo ID dùng chung cho tất cả các bảng.
+     *
+     * @param int $id
+     * @return Model|null
+     */
+    public function find(int $id): ?Model
     {
         return $this->model->find($id);
     }
 
-    public function create(array $data): mixed
+    /**
+     * Lấy toàn bộ danh sách bản ghi dùng chung.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function all()
+    {
+        return $this->model->all();
+    }
+
+    /**
+     * Tạo mới một bản ghi dùng chung.
+     *
+     * @param array $data
+     * @return Model
+     */
+    public function create(array $data): Model
     {
         return $this->model->create($data);
     }
-
-    public function update(int $id, array $data): bool
-    {
-        $record = $this->find($id);
-        return $record ? $record->update($data) : false;
-    }
-
-    public function delete(int $id): bool
-    {
-        $record = $this->find($id);
-        return $record ? $record->delete() : false;
-    }
 }
+
