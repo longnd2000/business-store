@@ -2,33 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Interfaces\IOrderService;
-use App\Http\Requests\StoreWebOrderRequest;
-use App\Services\Payment\PaymentFactory;
-use App\Jobs\ProcessOrderReceiptJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
 
 class WebOrderController extends Controller
 {
-    /**
-     * @var IOrderService
-     */
-    protected $orderService;
-
-    /**
-     * Inject IOrderService qua constructor.
-     */
-    public function __construct(IOrderService $orderService)
-    {
-        $this->orderService = $orderService;
-    }
-
     public function checkout()
     {
         $cart = session()->get('cart', []);
@@ -42,45 +24,77 @@ class WebOrderController extends Controller
         return view('store.checkout', compact('cart', 'cartTotal'));
     }
 
-    public function store(StoreWebOrderRequest $request)
+    public function store(Request $request)
     {
         $cart = session()->get('cart', []);
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Giỏ hàng của bạn đang trống.');
         }
 
-        try {
-            // Định dạng giỏ hàng thành danh sách chi tiết sản phẩm cho service xử lý
-            $items = [];
-            foreach ($cart as $id => $item) {
-                $items[] = [
-                    'product_id' => $id,
-                    'quantity' => $item['quantity']
-                ];
-            }
+        $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => ['required', 'regex:/^(03|05|07|08|09)\d{8}$/'],
+            'shipping_address' => 'required|string',
+            'payment_method' => 'required|string|in:COD,Bank Transfer',
+        ], [
+            'customer_phone.regex' => 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).'
+        ]);
 
-            // Gọi OrderService để xử lý logic nghiệp vụ đặt hàng phức tạp
-            $order = $this->orderService->createOrder([
-                'customer_name' => $request->customer_name,
-                'customer_phone' => $request->customer_phone,
-                'shipping_address' => $request->shipping_address,
-                'payment_method' => $request->payment_method,
-            ], $items);
+        try {
+            $order = DB::transaction(function () use ($request, $cart) {
+                $totalAmount = 0;
+                $itemsToCreate = [];
+
+                foreach ($cart as $id => $item) {
+                    $product = Product::lockForUpdate()->find($id);
+
+                    if (!$product || $product->stock < $item['quantity']) {
+                        throw new \Exception("Sản phẩm " . ($product->name ?? 'không xác định') . " không đủ số lượng trong kho.");
+                    }
+
+                    // Deduct stock
+                    $product->decrement('stock', $item['quantity']);
+
+                    $subtotal = $product->price * $item['quantity'];
+                    $totalAmount += $subtotal;
+
+                    $itemsToCreate[] = [
+                        'product_id' => $product->id,
+                        'quantity' => $item['quantity'],
+                        'price' => $product->price
+                    ];
+                }
+
+                // Check or create user based on phone number
+                $user = \App\Models\User::where('email', $request->customer_phone)->first();
+                if (!$user) {
+                    $user = \App\Models\User::create([
+                        'name' => $request->customer_name,
+                        'email' => $request->customer_phone,
+                        'password' => \Illuminate\Support\Facades\Hash::make('a12345'),
+                    ]);
+                }
+
+                $order = Order::create([
+                    'user_id' => $user->id,
+                    'customer_name' => $request->customer_name,
+                    'customer_email' => null,
+                    'customer_phone' => $request->customer_phone,
+                    'shipping_address' => $request->shipping_address,
+                    'payment_method' => $request->payment_method,
+                    'total_amount' => $totalAmount,
+                    'status' => 'Pending'
+                ]);
+
+                foreach ($itemsToCreate as $orderItem) {
+                    $order->items()->create($orderItem);
+                }
+
+                return $order;
+            });
 
             // Clear session cart
             session()->forget('cart');
-
-            // Xử lý thanh toán thông qua Payment Gateway sử dụng Abstract & Interface (Factory Pattern)
-            try {
-                $gateway = PaymentFactory::make($order->payment_method);
-                $gateway->process($order);
-            } catch (\Exception $paymentException) {
-                // Ghi log lỗi nhưng vẫn cho phép chuyển tiếp đến trang thành công để không làm gián đoạn trải nghiệm người dùng
-                Log::error("Payment Error for Order #{$order->id}: " . $paymentException->getMessage());
-            }
-
-            // Đẩy công việc gửi hóa đơn/email chạy ngầm bất đồng bộ qua Redis Queue
-            ProcessOrderReceiptJob::dispatch($order);
 
             return redirect()->route('checkout.success', $order->id);
 

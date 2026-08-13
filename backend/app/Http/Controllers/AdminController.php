@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\User;
-use App\Constants\OrderConstant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -111,7 +110,7 @@ class AdminController extends Controller
         }
 
         $request->validate([
-            'status' => 'required|string|in:' . OrderConstant::STATUS_PENDING . ',' . OrderConstant::STATUS_PROCESSING . ',' . OrderConstant::STATUS_COMPLETED . ',' . OrderConstant::STATUS_CANCELLED
+            'status' => 'required|string|in:Pending,Processing,Completed,Cancelled'
         ]);
 
         $order = Order::find($id);
@@ -125,7 +124,7 @@ class AdminController extends Controller
         $order->save();
 
         // If status changes to Cancelled, return stock back to products
-        if ($request->status === OrderConstant::STATUS_CANCELLED && $oldStatus !== OrderConstant::STATUS_CANCELLED) {
+        if ($request->status === 'Cancelled' && $oldStatus !== 'Cancelled') {
             foreach ($order->items as $item) {
                 $product = Product::find($item->product_id);
                 if ($product) {
@@ -135,7 +134,7 @@ class AdminController extends Controller
         }
 
         // If status reverts from Cancelled back to something else, deduct stock again
-        if ($oldStatus === OrderConstant::STATUS_CANCELLED && $request->status !== OrderConstant::STATUS_CANCELLED) {
+        if ($oldStatus === 'Cancelled' && $request->status !== 'Cancelled') {
             foreach ($order->items as $item) {
                 $product = Product::find($item->product_id);
                 if ($product) {
@@ -156,13 +155,13 @@ class AdminController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $totalRevenue = Order::where('status', '!=', OrderConstant::STATUS_CANCELLED)->sum('total_amount');
+        $totalRevenue = Order::where('status', '!=', 'Cancelled')->sum('total_amount');
         $totalOrders = Order::count();
         $totalProducts = Product::count();
-        $pendingOrders = Order::where('status', OrderConstant::STATUS_PENDING)->count();
+        $pendingOrders = Order::where('status', 'Pending')->count();
 
         // Recent sales chart data (last 7 days)
-        $salesData = Order::where('status', '!=', OrderConstant::STATUS_CANCELLED)
+        $salesData = Order::where('status', '!=', 'Cancelled')
             ->selectRaw('DATE(created_at) as date, SUM(total_amount) as total')
             ->groupBy('date')
             ->orderBy('date', 'asc')
@@ -412,7 +411,7 @@ class AdminController extends Controller
                 'phone' => $user->email, // email acts as the phone number
                 'created_at' => $user->created_at,
                 'orders_count' => $orders->count(),
-                'total_spent' => floatval($orders->where('status', '!=', OrderConstant::STATUS_CANCELLED)->sum('total_amount'))
+                'total_spent' => floatval($orders->where('status', '!=', 'Cancelled')->sum('total_amount'))
             ];
         });
 

@@ -25,12 +25,4 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-
-    /**
-     * Một đơn hàng có thể có nhiều lịch sử giao dịch thanh toán (ví dụ: giao dịch nháp, giao dịch thành công).
-     */
-    public function transactions(): HasMany
-    {
-        return $this->hasMany(PaymentTransaction::class);
-    }
 }
