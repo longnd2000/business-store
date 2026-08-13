@@ -205,7 +205,7 @@ export default function ProductDetail({ productId, navigate }: ProductDetailProp
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

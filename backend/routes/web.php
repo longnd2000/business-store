@@ -2,25 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
-use App\Http\Controllers\StorefrontController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\WebOrderController;
 
-// Storefront Pages
-Route::get('/', [StorefrontController::class, 'home'])->name('home');
-Route::get('/products', [StorefrontController::class, 'products'])->name('products.index');
-Route::get('/products/{id}', [StorefrontController::class, 'detail'])->name('products.detail');
-
-// Cart Sessions
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/add/{id}', [CartController::class, 'add'])->name('cart.add');
-Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
-Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
-
-// Checkout Process
-Route::get('/checkout', [WebOrderController::class, 'checkout'])->name('checkout.index');
-Route::post('/checkout', [WebOrderController::class, 'store'])->name('checkout.store');
-Route::get('/checkout/success/{id}', [WebOrderController::class, 'success'])->name('checkout.success');
+// Root API Endpoint
+Route::get('/', function () {
+    return response()->json([
+        'name' => config('app.name', 'Laravel'),
+        'status' => 'online',
+        'message' => 'Welcome to the Business Store API backend.'
+    ]);
+});
 
 // Dev Tools (Migrations & Seeding helper)
 Route::get('/dev/migrate', function () {

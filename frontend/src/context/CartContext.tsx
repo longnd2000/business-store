@@ -31,8 +31,30 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return localData ? JSON.parse(localData) : [];
   });
 
+  // 1. Cập nhật localStorage ngay lập tức để bảo toàn dữ liệu giao diện
   useEffect(() => {
     localStorage.setItem('business_store_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  // 2. Đồng bộ giỏ hàng lên Server sử dụng cơ chế Debounce của Event Loop
+  useEffect(() => {
+    // Không cần sync nếu giỏ hàng trống rỗng lúc khởi chạy
+    if (cart.length === 0) return;
+
+    // Lập lịch gửi API sau 1 giây (Macrotask)
+    const timer = setTimeout(async () => {
+      try {
+        console.log('🚀 [Event Loop] Đang đồng bộ giỏ hàng lên Server (Debounced):', cart);
+        // Để gửi thực tế lên Laravel backend, hãy import api từ '../services/api' và chạy:
+        // const payload = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }));
+        // await api.post('/cart/sync', { items: payload });
+      } catch (error) {
+        console.error('Lỗi đồng bộ giỏ hàng lên server:', error);
+      }
+    }, 1000); // 1000ms trì hoãn
+
+    // Hủy timer cũ nếu người dùng nhấn nút tăng/giảm tiếp trong vòng 1 giây
+    return () => clearTimeout(timer);
   }, [cart]);
 
   const addToCart = (product: Product, quantity = 1) => {

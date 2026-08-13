@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Category, Product } from '../types';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface ProductsProps {
   navigate: (page: string, productId?: number | null) => void;
@@ -13,6 +14,9 @@ export default function Products({ navigate }: ProductsProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Áp dụng useDebounce hook để trì hoãn cập nhật truy vấn tìm kiếm
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -38,8 +42,8 @@ export default function Products({ navigate }: ProductsProps) {
         if (selectedCategory !== 'all') {
           params.push(`category=${selectedCategory}`);
         }
-        if (searchQuery) {
-          params.push(`q=${encodeURIComponent(searchQuery)}`);
+        if (debouncedSearchQuery) {
+          params.push(`q=${encodeURIComponent(debouncedSearchQuery)}`);
         }
         if (params.length > 0) {
           url += `?${params.join('&')}`;
@@ -60,12 +64,8 @@ export default function Products({ navigate }: ProductsProps) {
       }
     };
 
-    const timer = setTimeout(() => {
-      fetchProducts();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [selectedCategory, searchQuery]);
+    fetchProducts();
+  }, [selectedCategory, debouncedSearchQuery]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-left">

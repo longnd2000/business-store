@@ -35,20 +35,11 @@ import {
   PlusOutlined,
   ArrowLeftOutlined
 } from '@ant-design/icons';
-import {
-  useGetStatsQuery,
-  useGetOrdersQuery,
-  useUpdateOrderStatusMutation,
-  useGetProductsQuery,
-  useCreateProductMutation,
-  useUpdateProductMutation,
-  useDeleteProductMutation,
-  useGetCategoriesQuery,
-  useCreateCategoryMutation,
-  useUpdateCategoryMutation,
-  useDeleteCategoryMutation,
-  useGetBuyersQuery
-} from '../store/apiSlice';
+import { useGetStatsQuery } from '../store/statsSlice';
+import { useGetOrdersQuery, useUpdateOrderStatusMutation } from '../store/ordersSlice';
+import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation } from '../store/productsSlice';
+import { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from '../store/categoriesSlice';
+import { useGetBuyersQuery } from '../store/buyersSlice';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
