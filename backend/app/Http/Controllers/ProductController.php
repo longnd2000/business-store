@@ -2,39 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use App\Models\Category;
+use App\Repositories\Interfaces\IProductRepository;
+use App\Repositories\Interfaces\ICategoryRepository;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    /**
+     * @var IProductRepository
+     */
+    protected $productRepository;
+
+    /**
+     * @var ICategoryRepository
+     */
+    protected $categoryRepository;
+
+    /**
+     * Inject các Repository vào Constructor.
+     */
+    public function __construct(
+        IProductRepository $productRepository,
+        ICategoryRepository $categoryRepository
+    ) {
+        $this->productRepository = $productRepository;
+        $this->categoryRepository = $categoryRepository;
+    }
+
     public function index(Request $request)
     {
-        $query = Product::with('category');
-
-        if ($request->has('category')) {
-            $categorySlug = $request->query('category');
-            $query->whereHas('category', function($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
-            });
-        }
-
-        if ($request->has('q')) {
-            $search = $request->query('q');
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        $products = $query->latest()->get();
+        $products = $this->productRepository->getFilteredProducts(
+            $request->query('category'),
+            $request->query('q')
+        );
 
         return response()->json($products);
     }
 
     public function show($id)
     {
-        $product = Product::with('category')->find($id);
+        $product = $this->productRepository->find($id);
 
         if (!$product) {
             return response()->json(['message' => 'Product not found'], 404);
@@ -45,7 +52,8 @@ class ProductController extends Controller
 
     public function categories()
     {
-        $categories = Category::withCount('products')->get();
+        $categories = $this->categoryRepository->getCategoriesWithCount();
         return response()->json($categories);
     }
 }
+

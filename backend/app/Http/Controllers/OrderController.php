@@ -2,77 +2,100 @@
 
 namespace App\Http\Controllers;
 
+use App\Repositories\Interfaces\IOrderRepository;
+use App\Services\Interfaces\IOrderService;
+use App\Http\Requests\StoreOrderRequest;
+use App\Services\Payment\PaymentFactory;
+use App\Jobs\ProcessOrderReceiptJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'customer_name' => 'required|string|max:255',
-            'customer_email' => 'required|email|max:255',
-            'customer_phone' => 'required|string|max:20',
-            'shipping_address' => 'required|string',
-            'payment_method' => 'required|string|in:COD,Bank Transfer',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-        ]);
+    /**
+     * @var IOrderRepository
+     */
+    protected $orderRepository;
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+    /**
+     * @var IOrderService
+     */
+    protected $orderService;
+
+    /**
+     * Inject Repository và Service qua constructor (Laravel Container tự xử lý).
+     */
+    public function __construct(
+        IOrderRepository $orderRepository,
+        IOrderService $orderService
+    ) {
+        $this->orderRepository = $orderRepository;
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Chức năng: Lấy đơn hàng đã mua sử dụng Repository Interface
+     */
+    public function purchasedOrders(Request $request)
+    {
+        // Lấy ID user hiện tại (Mặc định là 1 để chạy thử nếu chưa đăng nhập)
+        $userId = auth()->id() ?? 1;
+
+        // Gọi hàm từ Interface
+        $orders = $this->orderRepository->getPurchasedOrders($userId);
+
+        // Chạy thử hàm find() được kế thừa từ BaseRepository
+        $sampleOrder = null;
+        if ($orders->isNotEmpty()) {
+            $sampleOrder = $this->orderRepository->find($orders->first()->id);
         }
 
+        return response()->json([
+            'status' => 'success',
+            'user_id_resolved' => $userId,
+            'orders_count' => $orders->count(),
+            'orders' => $orders,
+            'inherited_find_method_test' => $sampleOrder ? [
+                'id' => $sampleOrder->id,
+                'customer_name' => $sampleOrder->customer_name,
+                'total_amount' => $sampleOrder->total_amount
+            ] : 'No orders found'
+        ]);
+    }
+
+    public function store(StoreOrderRequest $request)
+    {
         try {
-            $order = DB::transaction(function () use ($request) {
-                $totalAmount = 0;
-                $itemsToCreate = [];
+            $order = $this->orderService->createOrder(
+                $request->only([
+                    'customer_name',
+                    'customer_email',
+                    'customer_phone',
+                    'shipping_address',
+                    'payment_method'
+                ]),
+                $request->items
+            );
 
-                foreach ($request->items as $itemData) {
-                    $product = Product::lockForUpdate()->find($itemData['product_id']);
+            // Xử lý thanh toán thông qua Payment Gateway sử dụng Abstract & Interface (Factory Pattern)
+            try {
+                $gateway = PaymentFactory::make($order->payment_method);
+                $gateway->process($order);
+            } catch (\Exception $paymentException) {
+                Log::error("Payment Error for API Order #{$order->id}: " . $paymentException->getMessage());
+            }
 
-                    if ($product->stock < $itemData['quantity']) {
-                        throw new \Exception("Sản phẩm {$product->name} không đủ số lượng trong kho.");
-                    }
-
-                    // Deduct stock
-                    $product->decrement('stock', $itemData['quantity']);
-
-                    $subtotal = $product->price * $itemData['quantity'];
-                    $totalAmount += $subtotal;
-
-                    $itemsToCreate[] = [
-                        'product_id' => $product->id,
-                        'quantity' => $itemData['quantity'],
-                        'price' => $product->price
-                    ];
-                }
-
-                $order = Order::create([
-                    'customer_name' => $request->customer_name,
-                    'customer_email' => $request->customer_email,
-                    'customer_phone' => $request->customer_phone,
-                    'shipping_address' => $request->shipping_address,
-                    'payment_method' => $request->payment_method,
-                    'total_amount' => $totalAmount,
-                    'status' => 'Pending'
-                ]);
-
-                foreach ($itemsToCreate as $item) {
-                    $order->items()->create($item);
-                }
-
-                return $order;
-            });
+            // Đẩy công việc gửi hóa đơn/email chạy ngầm bất đồng bộ qua Redis Queue
+            ProcessOrderReceiptJob::dispatch($order);
 
             return response()->json([
                 'message' => 'Đặt hàng thành công!',
-                'order' => $order->load('items.product')
+                'order' => $order->load(['items.product', 'transactions'])
             ], 201);
 
         } catch (\Exception $e) {
