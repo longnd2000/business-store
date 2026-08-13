@@ -7,55 +7,25 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\User;
 use App\Constants\OrderConstant;
+use App\Constants\RolePermissionConstant;
+use App\Services\Interfaces\IAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
-    private function validateAdmin(Request $request)
+    protected IAuthService $authService;
+
+    public function __construct(IAuthService $authService)
     {
-        // Try custom header first to bypass Apache/Windows PHP server header stripping bugs
-        $token = $request->header('X-Admin-Token');
-        
-        if (!$token) {
-            // Fallback to standard Authorization Bearer header
-            $authHeader = $request->header('Authorization');
-            if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
-                $token = str_replace('Bearer ', '', $authHeader);
-            }
-        }
+        $this->authService = $authService;
+    }
 
-        if (!$token) {
-            return false;
-        }
-
-        $decoded = base64_decode($token);
-        
-        if (!$decoded) {
-            return false;
-        }
-
-        $parts = explode(':', $decoded);
-        if (count($parts) < 2) {
-            return false;
-        }
-
-        $username = $parts[0];
-        $timestamp = intval($parts[1]);
-
-        // Token valid for 24 hours (86400 seconds)
-        if (time() - $timestamp > 86400) {
-            return false;
-        }
-
-        // Search for user in database to validate
-        $user = User::where('email', $username)->first();
-        if (!$user) {
-            return false;
-        }
-
-        return true;
+    private function checkPermission(Request $request, string $permission): bool
+    {
+        $user = $request->user();
+        return $user && $user->hasPermission($permission);
     }
 
     public function login(Request $request)
@@ -65,27 +35,39 @@ class AdminController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Query database for admin user
-        $user = User::where('email', $request->username)->first();
-
-        if ($user && Hash::check($request->password, $user->password)) {
-            $token = base64_encode($user->email . ':' . time());
+        try {
+            $authData = $this->authService->login($request->username, $request->password);
+            
             return response()->json([
                 'status' => 'success',
-                'token' => $token,
+                'token' => $authData['access_token'],
                 'message' => 'Đăng nhập thành công!'
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 401);
         }
+    }
 
+    public function me(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->role, ['admin', 'editor'])) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
         return response()->json([
-            'status' => 'error',
-            'message' => 'Tài khoản hoặc mật khẩu không chính xác.'
-        ], 401);
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+        ]);
     }
 
     public function orders(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_MANAGE_ORDERS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -106,7 +88,7 @@ class AdminController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_MANAGE_ORDERS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -152,7 +134,7 @@ class AdminController extends Controller
 
     public function stats(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_VIEW_STATS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -184,7 +166,7 @@ class AdminController extends Controller
 
     public function categories(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_VIEW_CATEGORIES)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -204,7 +186,7 @@ class AdminController extends Controller
 
     public function storeCategory(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_MANAGE_CATEGORIES)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -227,7 +209,7 @@ class AdminController extends Controller
 
     public function deleteCategory(Request $request, $id)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_MANAGE_CATEGORIES)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -245,7 +227,7 @@ class AdminController extends Controller
 
     public function updateCategory(Request $request, $id)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_MANAGE_CATEGORIES)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -277,7 +259,7 @@ class AdminController extends Controller
 
     public function products(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_VIEW_PRODUCTS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -300,7 +282,7 @@ class AdminController extends Controller
 
     public function storeProduct(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_CREATE_PRODUCTS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -331,7 +313,7 @@ class AdminController extends Controller
 
     public function updateProduct(Request $request, $id)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_EDIT_PRODUCTS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -367,7 +349,7 @@ class AdminController extends Controller
 
     public function deleteProduct(Request $request, $id)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_DELETE_PRODUCTS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -389,18 +371,18 @@ class AdminController extends Controller
 
     public function buyers(Request $request)
     {
-        if (!$this->validateAdmin($request)) {
+        if (!$this->checkPermission($request, RolePermissionConstant::PERM_VIEW_BUYERS)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $query = User::where('email', '!=', 'admin')->latest();
+        $query = User::where('role', 'buyer')->latest();
 
         if ($request->has('search') && $request->search !== '') {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%");
-            })->where('email', '!=', 'admin');
+            });
         }
 
         $buyers = $query->get()->map(function ($user) {

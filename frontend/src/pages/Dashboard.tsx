@@ -40,6 +40,7 @@ import { useGetOrdersQuery, useUpdateOrderStatusMutation } from '../store/orders
 import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation } from '../store/productsSlice';
 import { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from '../store/categoriesSlice';
 import { useGetBuyersQuery } from '../store/buyersSlice';
+import { SYSTEM_MESSAGES } from '../constants/messages';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -70,13 +71,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Decode userRole and userPermissions from JWT token
+  const token = localStorage.getItem('admin_token');
+  let userRole = 'buyer';
+  let userName = '';
+  let userPermissions: string[] = [];
+
+  if (token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(payloadJson);
+        userRole = payload.claims?.role || 'buyer';
+        userName = payload.claims?.name || '';
+        userPermissions = payload.claims?.permissions || [];
+      }
+    } catch (e) {
+      console.error("Failed to parse JWT token", e);
+    }
+  }
+
+  const hasPermission = (permission: string) => userPermissions.includes(permission);
+
   // Determine active tab key based on path name
   const currentPath = location.pathname;
-  let activeTabKey = 'overview';
+  let activeTabKey = hasPermission('view_stats') ? 'overview' : 'products';
   if (currentPath.includes('/products')) activeTabKey = 'products';
-  else if (currentPath.includes('/categories')) activeTabKey = 'categories';
-  else if (currentPath.includes('/buyers')) activeTabKey = 'buyers';
-  else if (currentPath.includes('/orders')) activeTabKey = 'orders';
+  else if (currentPath.includes('/categories') && hasPermission('manage_categories')) activeTabKey = 'categories';
+  else if (currentPath.includes('/buyers') && hasPermission('view_buyers')) activeTabKey = 'buyers';
+  else if (currentPath.includes('/orders') && hasPermission('manage_orders')) activeTabKey = 'orders';
 
   const isAddProduct = currentPath === '/admin/products/add';
   const isEditProduct = currentPath === '/admin/products/edit';
@@ -254,10 +278,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     const handleDelete = async (id: number) => {
       try {
-        await deleteProduct(id).unwrap();
-        message.success('Xóa sản phẩm thành công!');
-      } catch (err) {
-        message.error('Lỗi khi xóa sản phẩm.');
+        const res = await deleteProduct(id).unwrap();
+        message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+      } catch (err: any) {
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
       }
     };
 
@@ -275,15 +299,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             style={{ width: 300 }}
             allowClear
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/admin/products/add')}
-            className="bg-violet-600 border-none font-bold rounded-xl"
-            style={{ backgroundColor: '#7c3aed' }}
-          >
-            Thêm sản phẩm mới
-          </Button>
+          {hasPermission('create_products') && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/admin/products/add')}
+              className="bg-violet-600 border-none font-bold rounded-xl"
+              style={{ backgroundColor: '#7c3aed' }}
+            >
+              Thêm sản phẩm mới
+            </Button>
+          )}
         </div>
 
         <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
@@ -344,16 +370,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     >
                       Sửa
                     </Button>
-                    <Popconfirm
-                      title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-                      okText="Đồng ý"
-                      cancelText="Hủy bỏ"
-                      onConfirm={() => handleDelete(record.id)}
-                    >
-                      <Button type="text" danger className="font-bold rounded-lg">
-                        Xóa
-                      </Button>
-                    </Popconfirm>
+                    {hasPermission('delete_products') && (
+                      <Popconfirm
+                        title="Bạn có chắc chắn muốn xóa sản phẩm này?"
+                        okText="Đồng ý"
+                        cancelText="Hủy bỏ"
+                        onConfirm={() => handleDelete(record.id)}
+                      >
+                        <Button type="text" danger className="font-bold rounded-lg">
+                          Xóa
+                        </Button>
+                      </Popconfirm>
+                    )}
                   </Space>
                 )
               }
@@ -419,15 +447,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const onSubmit = async (data: ProductFormFields) => {
       try {
         if (isEdit && editingId) {
-          await updateProduct({ id: editingId, data }).unwrap();
-          message.success('Cập nhật sản phẩm thành công!');
+          const res = await updateProduct({ id: editingId, data }).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
         } else {
-          await createProduct(data).unwrap();
-          message.success('Thêm sản phẩm mới thành công!');
+          const res = await createProduct(data).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
         }
         navigate('/admin/products');
       } catch (err: any) {
-        message.error(err.data?.message || 'Có lỗi xảy ra khi lưu sản phẩm.');
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
       }
     };
 
@@ -565,10 +593,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     const handleDelete = async (id: number) => {
       try {
-        await deleteCategory(id).unwrap();
-        message.success('Xóa danh mục thành công!');
-      } catch (err) {
-        message.error('Lỗi khi xóa danh mục.');
+        const res = await deleteCategory(id).unwrap();
+        message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+      } catch (err: any) {
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
       }
     };
 
@@ -702,15 +730,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const onSubmit = async (data: CategoryFormFields) => {
       try {
         if (isEdit && editingId) {
-          await updateCategory({ id: editingId, data }).unwrap();
-          message.success('Cập nhật danh mục thành công!');
+          const res = await updateCategory({ id: editingId, data }).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
         } else {
-          await createCategory(data).unwrap();
-          message.success('Tạo danh mục mới thành công!');
+          const res = await createCategory(data).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
         }
         navigate('/admin/categories');
       } catch (err: any) {
-        message.error(err.data?.message || 'Có lỗi xảy ra khi lưu danh mục.');
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
       }
     };
 
@@ -867,10 +895,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     const handleStatusChange = async (orderId: number, status: string) => {
       try {
-        await updateOrderStatus({ id: orderId, status }).unwrap();
-        message.success('Cập nhật trạng thái đơn hàng thành công!');
-      } catch (err) {
-        message.error('Lỗi khi cập nhật trạng thái đơn hàng.');
+        const res = await updateOrderStatus({ id: orderId, status }).unwrap();
+        message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+      } catch (err: any) {
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
       }
     };
 
@@ -988,37 +1016,37 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           selectedKeys={[activeTabKey]}
           className="mt-6 bg-slate-900 border-none px-2 space-y-1"
           items={[
-            {
+            hasPermission('view_stats') && {
               key: 'overview',
               icon: <DashboardOutlined />,
               label: 'Tổng quan',
               onClick: () => navigate('/admin/overview')
             },
-            {
+            hasPermission('view_products') && {
               key: 'products',
               icon: <ShoppingOutlined />,
               label: 'Sản phẩm',
               onClick: () => navigate('/admin/products')
             },
-            {
+            hasPermission('manage_categories') && {
               key: 'categories',
               icon: <FolderOpenOutlined />,
               label: 'Danh mục',
               onClick: () => navigate('/admin/categories')
             },
-            {
+            hasPermission('view_buyers') && {
               key: 'buyers',
               icon: <UserOutlined />,
               label: 'Người mua',
               onClick: () => navigate('/admin/buyers')
             },
-            {
+            hasPermission('manage_orders') && {
               key: 'orders',
               icon: <FileTextOutlined />,
               label: 'Đơn hàng',
               onClick: () => navigate('/admin/orders')
             }
-          ]}
+          ].filter(Boolean) as any}
         />
 
         <div className="absolute bottom-0 w-full p-4 bg-slate-950 border-t border-slate-850 space-y-2">
@@ -1058,23 +1086,49 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             {activeTabKey === 'buyers' && 'Danh Sách Người Mua'}
             {activeTabKey === 'orders' && 'Quản Lý Đơn Hàng'}
           </Title>
-          <Text type="secondary" className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full">
-            LX Store Admin Panel
-          </Text>
+          <Space size="middle">
+            <Text type="secondary" className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full uppercase">
+              Quyền: {userRole}
+            </Text>
+            {userName && (
+              <Text className="text-xs font-bold text-slate-700">
+                Xin chào, {userName}
+              </Text>
+            )}
+          </Space>
         </Header>
 
         <Content className="p-8 overflow-y-auto" style={{ backgroundColor: '#f8fafc' }}>
           <Routes>
-            <Route path="overview" element={<OverviewTab />} />
-            <Route path="products" element={<ProductsTab />} />
-            <Route path="products/add" element={<ProductFormTab />} />
-            <Route path="products/edit" element={<ProductFormTab />} />
-            <Route path="categories" element={<CategoriesTab />} />
-            <Route path="categories/add" element={<CategoryFormTab />} />
-            <Route path="categories/edit" element={<CategoryFormTab />} />
-            <Route path="buyers" element={<BuyersTab />} />
-            <Route path="orders" element={<OrdersTab />} />
-            <Route path="*" element={<Navigate to="overview" replace />} />
+            {hasPermission('view_stats') && <Route path="overview" element={<OverviewTab />} />}
+            {hasPermission('view_products') && <Route path="products" element={<ProductsTab />} />}
+            {hasPermission('create_products') && <Route path="products/add" element={<ProductFormTab />} />}
+            {hasPermission('edit_products') && <Route path="products/edit" element={<ProductFormTab />} />}
+            {hasPermission('manage_categories') && (
+              <>
+                <Route path="categories" element={<CategoriesTab />} />
+                <Route path="categories/add" element={<CategoryFormTab />} />
+                <Route path="categories/edit" element={<CategoryFormTab />} />
+              </>
+            )}
+            {hasPermission('view_buyers') && <Route path="buyers" element={<BuyersTab />} />}
+            {hasPermission('manage_orders') && <Route path="orders" element={<OrdersTab />} />}
+            
+            <Route 
+              path="*" 
+              element={
+                <Navigate 
+                  to={
+                    hasPermission('view_stats') 
+                      ? 'overview' 
+                      : hasPermission('view_products') 
+                        ? 'products' 
+                        : '/admin/products'
+                  } 
+                  replace 
+                />
+              } 
+            />
           </Routes>
         </Content>
       </Layout>

@@ -11,11 +11,53 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 0. Create Admin User in Database
+        // 0. Seed Roles and Permissions
+        $permissions = [
+            'view_stats',
+            'view_products',
+            'create_products',
+            'edit_products',
+            'delete_products',
+            'view_categories',
+            'manage_categories',
+            'view_buyers',
+            'manage_orders',
+        ];
+
+        $permissionModels = [];
+        foreach ($permissions as $permName) {
+            $permissionModels[$permName] = \App\Models\Permission::create([
+                'name' => $permName
+            ]);
+        }
+
+        $adminRole = \App\Models\Role::create(['name' => 'admin']);
+        $editorRole = \App\Models\Role::create(['name' => 'editor']);
+        $buyerRole = \App\Models\Role::create(['name' => 'buyer']);
+
+        // Admin gets all permissions
+        $adminRole->permissions()->attach(array_map(fn($m) => $m->id, $permissionModels));
+
+        // Editor gets view_products, edit_products, view_categories
+        $editorRole->permissions()->attach([
+            $permissionModels['view_products']->id,
+            $permissionModels['edit_products']->id,
+            $permissionModels['view_categories']->id,
+        ]);
+
+        // 0.1. Create Admin and Editor Users in Database
         \App\Models\User::create([
             'name' => 'Admin LX',
             'email' => 'admin',
             'password' => \Illuminate\Support\Facades\Hash::make('abc123'),
+            'role_id' => $adminRole->id,
+        ]);
+
+        \App\Models\User::create([
+            'name' => 'Editor LX',
+            'email' => 'editor',
+            'password' => \Illuminate\Support\Facades\Hash::make('abc123'),
+            'role_id' => $editorRole->id,
         ]);
 
         // 1. Create categories

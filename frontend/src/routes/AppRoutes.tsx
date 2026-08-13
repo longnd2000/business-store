@@ -34,6 +34,11 @@ const ProductDetailWrapper: React.FC<{ navigate: any }> = ({ navigate }) => {
 export const AppRoutes: React.FC = () => {
   const token = localStorage.getItem('admin_token');
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    window.location.href = '/admin/login';
+  };
+
   return (
     <Routes>
       {/* Public Storefront Routes wrapped in MainLayout */}
@@ -52,7 +57,7 @@ export const AppRoutes: React.FC = () => {
       />
       <Route 
         path="/admin/*" 
-        element={token ? <Dashboard /> : <Navigate to="/admin/login" replace />} 
+        element={token ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/admin/login" replace />} 
       />
 
       {/* Fallback redirect */}

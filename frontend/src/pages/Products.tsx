@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Category, Product } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
+import { httpGet } from '../services/api';
 
 interface ProductsProps {
   navigate: (page: string, productId?: number | null) => void;
@@ -21,11 +22,8 @@ export default function Products({ navigate }: ProductsProps) {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/categories');
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data);
-        }
+        const data = await httpGet('/categories');
+        setCategories(data);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
       }
@@ -37,23 +35,15 @@ export default function Products({ navigate }: ProductsProps) {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        let url = 'http://127.0.0.1:8000/api/products';
-        const params: string[] = [];
+        const params: Record<string, string> = {};
         if (selectedCategory !== 'all') {
-          params.push(`category=${selectedCategory}`);
+          params.category = selectedCategory;
         }
         if (debouncedSearchQuery) {
-          params.push(`q=${encodeURIComponent(debouncedSearchQuery)}`);
-        }
-        if (params.length > 0) {
-          url += `?${params.join('&')}`;
+          params.q = debouncedSearchQuery;
         }
 
-        const res = await fetch(url);
-        if (!res.ok) {
-          throw new Error("Không thể kết nối đến API.");
-        }
-        const data = await res.json();
+        const data = await httpGet('/products', params);
         setProducts(data);
         setError(null);
       } catch (err) {

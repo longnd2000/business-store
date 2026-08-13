@@ -14,6 +14,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role_id',
     ];
 
     protected $hidden = [
@@ -34,9 +35,27 @@ class User extends Authenticatable
      */
     public function getJWTCustomClaims(): array
     {
+        $roleName = $this->role ? $this->role->name : '';
+        $permissions = $this->role ? $this->role->permissions->pluck('name')->toArray() : [];
+
         return [
             'email' => $this->email,
             'name'  => $this->name,
+            'role'  => $roleName,
+            'permissions' => $permissions,
         ];
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if (!$this->role) {
+            return false;
+        }
+        return $this->role->permissions()->where('name', $permission)->exists();
     }
 }

@@ -37,6 +37,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interfaces\IOrderService::class,
             \App\Services\OrderService::class
         );
+
+        $this->app->bind(
+            \App\Services\Interfaces\IAuthService::class,
+            \App\Services\AuthService::class
+        );
     }
 
     /**

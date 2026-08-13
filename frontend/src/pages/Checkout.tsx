@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Order } from '../types';
+import { httpPost } from '../services/api';
 
 interface CheckoutProps {
   navigate: (page: string, productId?: number | null) => void;
@@ -44,19 +45,7 @@ export default function Checkout({ navigate }: CheckoutProps) {
         }))
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Đã xảy ra lỗi khi tạo đơn hàng.");
-      }
+      const data = await httpPost('/orders', payload);
 
       setOrderSuccess(data.order);
       clearCart();

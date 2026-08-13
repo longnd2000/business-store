@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Category, Product } from '../types';
+import { httpGet } from '../services/api';
 
 interface HomeProps {
   navigate: (page: string, productId?: number | null) => void;
@@ -16,17 +17,10 @@ export default function Home({ navigate }: HomeProps) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [categoriesRes, productsRes] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/categories'),
-          fetch('http://127.0.0.1:8000/api/products')
+        const [categoriesData, productsData] = await Promise.all([
+          httpGet('/categories'),
+          httpGet('/products')
         ]);
-
-        if (!categoriesRes.ok || !productsRes.ok) {
-          throw new Error("Không thể kết nối đến máy chủ API.");
-        }
-
-        const categoriesData = await categoriesRes.json();
-        const productsData = await productsRes.json();
 
         setCategories(categoriesData);
         setFeaturedProducts(productsData.slice(0, 4));

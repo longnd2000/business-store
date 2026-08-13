@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import ProductCard from '../components/ProductCard';
 import { Product } from '../types';
+import { httpGet } from '../services/api';
 
 interface ProductDetailProps {
   productId: number | null;
@@ -24,20 +24,17 @@ export default function ProductDetail({ productId, navigate }: ProductDetailProp
     const fetchProductDetails = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://127.0.0.1:8000/api/products/${productId}`);
-        if (!res.ok) {
-          throw new Error("Không tìm thấy sản phẩm.");
-        }
-        const data = await res.json();
+        const data = await httpGet(`/products/${productId}`);
         setProduct(data);
         setQuantity(1);
         setError(null);
 
         if (data.category?.slug) {
-          const relatedRes = await fetch(`http://127.0.0.1:8000/api/products?category=${data.category.slug}`);
-          if (relatedRes.ok) {
-            const relatedData: Product[] = await relatedRes.json();
+          try {
+            const relatedData: Product[] = await httpGet(`/products`, { category: data.category.slug });
             setRelatedProducts(relatedData.filter(p => p.id !== data.id).slice(0, 4));
+          } catch (e) {
+            console.error(e);
           }
         }
       } catch (err) {

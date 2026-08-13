@@ -22,6 +22,14 @@ Route::middleware('jwt.auth')->prefix('admin')->group(function () {
     Route::get('/stats', [AdminController::class, 'stats']);
 
     Route::get('/categories', [AdminController::class, 'categories']);
+    Route::post('/categories', [AdminController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [AdminController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory']);
+
     Route::get('/products', [AdminController::class, 'products']);
+    Route::post('/products', [AdminController::class, 'storeProduct']);
+    Route::put('/products/{id}', [AdminController::class, 'updateProduct']);
+    Route::delete('/products/{id}', [AdminController::class, 'deleteProduct']);
+
     Route::get('/buyers', [AdminController::class, 'buyers']);
 });
