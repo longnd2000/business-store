@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
 import { httpGet } from '../services/api';
+import { Skeleton, Result, Button, InputNumber, Tag, Row, Col, Typography, Space, Divider, Flex } from 'antd';
+import { ShoppingCartOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 
 interface ProductDetailProps {
   productId: number | null;
@@ -50,159 +52,148 @@ export default function ProductDetail({ productId, navigate }: ProductDetailProp
     }
   }, [productId]);
 
-  const handleIncrement = () => {
-    if (product && quantity < product.stock) {
-      setQuantity(prev => prev + 1);
-    }
-  };
-
-  const handleDecrement = () => {
-    if (quantity > 1) {
-      setQuantity(prev => prev - 1);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 animate-pulse space-y-8">
-        <div className="h-6 bg-slate-100 w-24 rounded"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="bg-slate-100 aspect-square rounded-3xl"></div>
-          <div className="space-y-6">
-            <div className="h-4 bg-slate-100 w-1/4 rounded"></div>
-            <div className="h-8 bg-slate-100 w-3/4 rounded"></div>
-            <div className="h-4 bg-slate-100 w-1/2 rounded"></div>
-            <div className="h-20 bg-slate-100 rounded"></div>
-            <div className="h-10 bg-slate-100 w-1/3 rounded"></div>
-          </div>
-        </div>
-      </div>
+      <Flex vertical className="max-w-7xl mx-auto px-4 py-16 w-full">
+        <Skeleton.Button active size="small" className="w-32 mb-8" />
+        <Row gutter={[48, 48]} className="w-full">
+          <Col xs={24} md={12}>
+            <Flex align="center" justify="center" className="w-full aspect-square rounded-3xl overflow-hidden bg-slate-50">
+              <Skeleton.Image active style={{ width: '200px', height: '200px' }} />
+            </Flex>
+          </Col>
+          <Col xs={24} md={12}>
+            <Skeleton active paragraph={{ rows: 6 }} />
+            <Skeleton.Button active size="large" className="w-48 mt-8" />
+          </Col>
+        </Row>
+      </Flex>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="max-w-lg mx-auto text-center py-20 px-4">
-        <div className="bg-rose-50 border border-rose-100 text-rose-800 p-6 rounded-2xl">
-          <p className="font-semibold text-sm m-0">{error || "Sản phẩm không khả dụng."}</p>
-          <button 
-            onClick={() => navigate('products')}
-            className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-semibold cursor-pointer hover:bg-rose-500 transition-colors"
-          >
-            Quay lại cửa hàng
-          </button>
-        </div>
-      </div>
+      <Flex justify="center" align="center" className="max-w-7xl mx-auto py-20 px-4 w-full">
+        <Result
+          status="error"
+          title="Không thể tải sản phẩm"
+          subTitle={error || "Sản phẩm không khả dụng."}
+          extra={[
+            <Button key="back" type="primary" onClick={() => navigate('products')}>
+              Quay lại cửa hàng
+            </Button>
+          ]}
+        />
+      </Flex>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+    <Flex vertical gap={48} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
       {/* Back button */}
-      <div className="text-left">
-        <button
+      <Flex className="text-left w-full">
+        <Button
+          type="link"
+          icon={<ArrowLeftOutlined />}
           onClick={() => navigate('products')}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-violet-600 transition-colors cursor-pointer bg-transparent border-none p-0"
+          className="px-0 text-slate-600 hover:text-violet-600 font-semibold"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
           Quay lại danh sách
-        </button>
-      </div>
+        </Button>
+      </Flex>
 
       {/* Main product info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+      <Row gutter={[48, 48]} align="top" className="w-full">
         {/* Left: Image */}
-        <div className="relative overflow-hidden bg-slate-50 border border-slate-100 rounded-3xl shadow-sm aspect-square">
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-          {product.stock <= 0 && (
-            <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center backdrop-blur-[2px]">
-              <span className="bg-rose-600 text-white font-bold text-sm uppercase px-4 py-2 rounded-full tracking-wide">
-                Hết hàng
-              </span>
-            </div>
-          )}
-        </div>
+        <Col xs={24} md={12}>
+          <Flex className="relative overflow-hidden bg-slate-50 border border-slate-100 rounded-3xl shadow-sm aspect-square w-full">
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+            {product.stock <= 0 && (
+              <Flex align="center" justify="center" className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px]">
+                <Tag color="error" className="text-sm px-4 py-2 uppercase tracking-wide border-none font-bold">
+                  Hết hàng
+                </Tag>
+              </Flex>
+            )}
+          </Flex>
+        </Col>
 
         {/* Right: Info */}
-        <div className="space-y-6 text-left">
-          <div className="space-y-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-600">
-              {product.category?.name}
-            </span>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight my-0 leading-tight">
-              {product.name}
-            </h1>
-          </div>
+        <Col xs={24} md={12}>
+          <Space direction="vertical" size="large" className="w-full text-left">
+            <Space direction="vertical" size="small" className="w-full">
+              <Tag color="purple" className="px-3 py-1 rounded-full text-xs font-semibold border-none bg-violet-50 text-violet-600">
+                {product.category?.name}
+              </Tag>
+              <Typography.Title level={1} className="!my-0 !text-slate-900 tracking-tight font-extrabold text-3xl md:text-4xl">
+                {product.name}
+              </Typography.Title>
+            </Space>
 
-          <div className="text-2xl font-extrabold text-slate-900">
-            {formatPrice(product.price)}
-          </div>
+            <Typography.Title level={2} className="!my-0 !text-slate-900 font-extrabold">
+              {formatPrice(product.price)}
+            </Typography.Title>
 
-          <div className="border-t border-b border-slate-100 py-5">
-            <h3 className="text-slate-800 font-bold text-sm uppercase tracking-wide mb-2">Mô tả sản phẩm</h3>
-            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-              {product.description}
-            </p>
-          </div>
+            <Divider className="my-2" />
 
-          {/* Stock info & Quantity select */}
-          {product.stock > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-slate-500">Trạng thái:</span>
-                <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                  Còn hàng ({product.stock} sản phẩm)
-                </span>
-              </div>
+            <Flex vertical>
+              <Typography.Text strong className="text-slate-800 uppercase tracking-wide mb-2 block text-sm">
+                Mô tả sản phẩm
+              </Typography.Text>
+              <Typography.Paragraph className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
+                {product.description}
+              </Typography.Paragraph>
+            </Flex>
 
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-slate-500">Số lượng:</span>
-                <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                  <button
-                    onClick={handleDecrement}
-                    className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition-colors font-bold cursor-pointer"
-                  >
-                    -
-                  </button>
-                  <span className="px-4 py-2 text-sm font-semibold text-slate-800 min-w-[40px] text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={handleIncrement}
-                    className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition-colors font-bold cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+            <Divider className="my-2" />
 
-              {/* Add to Cart button */}
-              <button
-                onClick={() => addToCart(product, quantity)}
-                className="w-full md:w-auto px-8 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-2xl shadow-lg shadow-violet-100 hover:shadow-violet-200 transition-all cursor-pointer text-sm flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                </svg>
-                Thêm vào giỏ hàng
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-slate-500">Trạng thái:</span>
-              <span className="text-sm font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full">
-                Tạm hết hàng
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            {/* Stock info & Quantity select */}
+            {product.stock > 0 ? (
+              <Space direction="vertical" size="middle" className="w-full">
+                <Space size="middle">
+                  <Typography.Text type="secondary" className="font-medium text-sm">Trạng thái:</Typography.Text>
+                  <Tag color="success" className="px-2.5 py-0.5 rounded-full font-bold border-none">
+                    Còn hàng ({product.stock} sản phẩm)
+                  </Tag>
+                </Space>
+
+                <Space size="middle" className="items-center mt-2">
+                  <Typography.Text type="secondary" className="font-medium text-sm">Số lượng:</Typography.Text>
+                  <InputNumber 
+                    min={1} 
+                    max={product.stock} 
+                    value={quantity} 
+                    onChange={(val) => setQuantity(val || 1)}
+                    size="large"
+                    className="w-24"
+                  />
+                </Space>
+
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<ShoppingCartOutlined />}
+                  onClick={() => addToCart(product, quantity)}
+                  className="w-full md:w-auto px-8 mt-4 h-12 rounded-2xl shadow-lg shadow-violet-100 hover:shadow-violet-200 font-semibold bg-violet-600 hover:bg-violet-500 border-none"
+                >
+                  Thêm vào giỏ hàng
+                </Button>
+              </Space>
+            ) : (
+              <Space size="middle">
+                <Typography.Text type="secondary" className="font-medium text-sm">Trạng thái:</Typography.Text>
+                <Tag color="error" className="px-2.5 py-0.5 rounded-full font-bold border-none">
+                  Tạm hết hàng
+                </Tag>
+              </Space>
+            )}
+          </Space>
+        </Col>
+      </Row>
+    </Flex>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Layout, Row, Col, Typography, Space, Flex } from 'antd';
 
 interface FooterProps {
   navigate: (page: string, productId?: number | null) => void;
@@ -6,59 +7,55 @@ interface FooterProps {
 
 export default function Footer({ navigate }: FooterProps) {
   return (
-    <footer className="bg-slate-950 text-slate-400 border-t border-slate-900 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-left">
+    <Layout.Footer className="bg-slate-950 text-slate-400 border-t border-slate-900 mt-auto p-0">
+      <Flex vertical className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8 w-full">
+        <Row gutter={[32, 32]} className="text-left w-full">
           {/* Logo & Slogan */}
-          <div className="space-y-4 col-span-1 md:col-span-2">
-            <span className="text-2xl font-extrabold text-white tracking-tight">
-              NovaStore
-            </span>
-            <p className="text-sm max-w-xs text-slate-400">
-              Cửa hàng cung cấp các sản phẩm thiết bị điện tử, thời trang, nội thất và sách chất lượng cao, mang lại trải nghiệm mua sắm hoàn hảo cho bạn.
-            </p>
-          </div>
+          <Col xs={24} md={12}>
+            <Space direction="vertical" size="middle">
+              <Typography.Text className="text-2xl font-extrabold text-white tracking-tight">
+                NovaStore
+              </Typography.Text>
+              <Typography.Paragraph className="text-sm max-w-xs text-slate-400 m-0">
+                Cửa hàng cung cấp các sản phẩm thiết bị điện tử, thời trang, nội thất và sách chất lượng cao, mang lại trải nghiệm mua sắm hoàn hảo cho bạn.
+              </Typography.Paragraph>
+            </Space>
+          </Col>
 
           {/* Quick links */}
-          <div>
-            <h3 className="text-white text-sm font-semibold tracking-wider uppercase mb-4">Khám phá</h3>
-            <ul className="space-y-2 text-sm p-0 list-none">
-              <li>
-                <button onClick={() => navigate('home')} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">
-                  Trang Chủ
-                </button>
-              </li>
-              <li>
-                <button onClick={() => navigate('products')} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">
-                  Sản Phẩm
-                </button>
-              </li>
-              <li>
-                <button onClick={() => navigate('dashboard')} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">
-                  Trang Admin
-                </button>
-              </li>
-            </ul>
-          </div>
+          <Col xs={24} md={6}>
+            <Typography.Title level={5} className="!text-white !text-sm !font-semibold tracking-wider uppercase !mb-4">Khám phá</Typography.Title>
+            <Space direction="vertical" size="small">
+              <Typography.Link onClick={() => navigate('home')} className="!text-slate-400 hover:!text-white transition-colors cursor-pointer">
+                Trang Chủ
+              </Typography.Link>
+              <Typography.Link onClick={() => navigate('products')} className="!text-slate-400 hover:!text-white transition-colors cursor-pointer">
+                Sản Phẩm
+              </Typography.Link>
+              <Typography.Link onClick={() => navigate('dashboard')} className="!text-slate-400 hover:!text-white transition-colors cursor-pointer">
+                Trang Admin
+              </Typography.Link>
+            </Space>
+          </Col>
 
           {/* Contact Info */}
-          <div>
-            <h3 className="text-white text-sm font-semibold tracking-wider uppercase mb-4">Liên hệ</h3>
-            <ul className="space-y-2 text-sm text-slate-400 p-0 list-none">
-              <li>Địa chỉ: Laragon Local Host, Việt Nam</li>
-              <li>Điện thoại: +84 987 654 321</li>
-              <li>Email: contact@novastore.test</li>
-            </ul>
-          </div>
-        </div>
+          <Col xs={24} md={6}>
+            <Typography.Title level={5} className="!text-white !text-sm !font-semibold tracking-wider uppercase !mb-4">Liên hệ</Typography.Title>
+            <Space direction="vertical" size="small" className="text-sm text-slate-400">
+              <Typography.Text className="text-slate-400">Địa chỉ: Laragon Local Host, Việt Nam</Typography.Text>
+              <Typography.Text className="text-slate-400">Điện thoại: +84 987 654 321</Typography.Text>
+              <Typography.Text className="text-slate-400">Email: contact@novastore.test</Typography.Text>
+            </Space>
+          </Col>
+        </Row>
 
-        <div className="mt-8 border-t border-slate-900 pt-8 flex items-center justify-between text-xs text-slate-500">
-          <p>&copy; {new Date().getFullYear()} NovaStore. Môi trường Laragon Local Dev.</p>
-          <div className="flex space-x-4">
-            <span>Powered by Laravel & React (TypeScript)</span>
-          </div>
-        </div>
-      </div>
-    </footer>
+        <Flex justify="space-between" align="center" className="mt-8 border-t border-slate-900 pt-8 text-xs text-slate-500 w-full">
+          <Typography.Text className="text-slate-500">&copy; {new Date().getFullYear()} NovaStore. Môi trường Laragon Local Dev.</Typography.Text>
+          <Space>
+            <Typography.Text className="text-slate-500">Powered by Laravel & React (TypeScript)</Typography.Text>
+          </Space>
+        </Flex>
+      </Flex>
+    </Layout.Footer>
   );
 }

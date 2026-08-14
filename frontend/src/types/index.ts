@@ -66,3 +66,15 @@ export interface Buyer {
   orders_count: number;
   total_spent: number;
 }
+
+export interface News {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string;
+  content: string;
+  image_url: string;
+  author: string;
+  created_at: string;
+  updated_at?: string;
+}

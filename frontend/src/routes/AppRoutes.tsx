@@ -8,6 +8,8 @@ import Checkout from '../pages/Checkout';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
 import MainLayout from '../layouts/MainLayout';
+import News from '../pages/News';
+import NewsDetail from '../pages/NewsDetail';
 
 // Wrapper helper to inject standard storefront page navigate logic
 const RouteWithNavigate: React.FC<{ component: React.ComponentType<any> }> = ({ component: Component }) => {
@@ -19,6 +21,8 @@ const RouteWithNavigate: React.FC<{ component: React.ComponentType<any> }> = ({ 
     else if (page === 'cart') navigate('/cart');
     else if (page === 'checkout') navigate('/checkout');
     else if (page === 'dashboard') navigate('/admin/overview');
+    else if (page === 'news') navigate('/news');
+    else if (page === 'news-detail' && productId) navigate(`/news/${productId}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   return <Component navigate={appNavigate} />;
@@ -29,6 +33,13 @@ const ProductDetailWrapper: React.FC<{ navigate: any }> = ({ navigate }) => {
   const { id } = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : null;
   return <ProductDetail productId={productId} navigate={navigate} />;
+};
+
+// Wrapper specifically for NewsDetail to grab dynamic URL parameters
+const NewsDetailWrapper: React.FC<{ navigate: any }> = ({ navigate }) => {
+  const { id } = useParams<{ id: string }>();
+  const articleId = id ? parseInt(id, 10) : null;
+  return <NewsDetail articleId={articleId} navigate={navigate} />;
 };
 
 export const AppRoutes: React.FC = () => {
@@ -48,6 +59,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="products/:id" element={<RouteWithNavigate component={ProductDetailWrapper} />} />
         <Route path="cart" element={<RouteWithNavigate component={Cart} />} />
         <Route path="checkout" element={<RouteWithNavigate component={Checkout} />} />
+        <Route path="news" element={<RouteWithNavigate component={News} />} />
+        <Route path="news/:id" element={<RouteWithNavigate component={NewsDetailWrapper} />} />
       </Route>
 
       {/* Admin Panel Routes */}

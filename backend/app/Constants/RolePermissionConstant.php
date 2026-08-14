@@ -17,6 +17,7 @@ class RolePermissionConstant
     public const PERM_MANAGE_CATEGORIES = 'manage_categories';
     public const PERM_VIEW_BUYERS = 'view_buyers';
     public const PERM_MANAGE_ORDERS = 'manage_orders';
+    public const PERM_MANAGE_NEWS = 'manage_news';
 
     public const MAP = [
         self::ROLE_ADMIN => [
@@ -29,11 +30,13 @@ class RolePermissionConstant
             self::PERM_MANAGE_CATEGORIES,
             self::PERM_VIEW_BUYERS,
             self::PERM_MANAGE_ORDERS,
+            self::PERM_MANAGE_NEWS,
         ],
         self::ROLE_EDITOR => [
             self::PERM_VIEW_PRODUCTS,
             self::PERM_EDIT_PRODUCTS,
             self::PERM_VIEW_CATEGORIES,
+            self::PERM_MANAGE_NEWS,
         ],
         self::ROLE_BUYER => []
     ];

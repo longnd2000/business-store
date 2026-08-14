@@ -4,12 +4,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\NewsController;
 
 // Public APIs
 Route::get('/categories', [ProductController::class, 'categories']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::post('/orders', [OrderController::class, 'store']);
+Route::get('/news', [NewsController::class, 'index']);
+Route::get('/news/{id}', [NewsController::class, 'show']);
 
 // Public API Auth: Đăng nhập lấy JWT Token
 Route::post('/admin/login', [AdminController::class, 'login']);
@@ -32,4 +35,9 @@ Route::middleware('jwt.auth')->prefix('admin')->group(function () {
     Route::delete('/products/{id}', [AdminController::class, 'deleteProduct']);
 
     Route::get('/buyers', [AdminController::class, 'buyers']);
+
+    Route::get('/news', [NewsController::class, 'adminIndex']);
+    Route::post('/news', [NewsController::class, 'store']);
+    Route::put('/news/{id}', [NewsController::class, 'update']);
+    Route::delete('/news/{id}', [NewsController::class, 'delete']);
 });

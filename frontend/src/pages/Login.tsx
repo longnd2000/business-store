@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, Input, Button, Card, Typography, Alert } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert, Flex } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
@@ -45,8 +45,10 @@ export default function Login() {
   };
 
   return (
-    <div 
-      className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+    <Flex 
+      align="center" 
+      justify="center" 
+      className="min-h-screen bg-slate-900 p-4"
       style={{
         backgroundImage: 'radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 50%)',
       }}
@@ -59,12 +61,12 @@ export default function Login() {
           borderColor: '#1e293b',
         }}
       >
-        <div className="text-center mb-6">
+        <Flex vertical align="center" className="mb-6 text-center">
           <Title level={2} style={{ color: 'white', margin: 0, fontWeight: 900 }}>
             LX Store <span className="text-xs font-semibold px-2 py-0.5 bg-violet-600 text-white rounded-md uppercase ml-1" style={{ fontSize: '12px', verticalAlign: 'middle' }}>Admin</span>
           </Title>
           <Text style={{ color: '#94a3b8' }}>Nhập thông tin quản trị viên để đăng nhập</Text>
-        </div>
+        </Flex>
 
         {apiError && (
           <Alert
@@ -146,7 +148,7 @@ export default function Login() {
           </Form.Item>
         </Form>
 
-        <div className="text-center mt-6">
+        <Flex justify="center" className="mt-6">
           <a
             href="http://127.0.0.1:8000"
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-400 transition-colors"
@@ -156,8 +158,8 @@ export default function Login() {
             </svg>
             Quay lại trang chủ
           </a>
-        </div>
+        </Flex>
       </Card>
-    </div>
+    </Flex>
   );
 }

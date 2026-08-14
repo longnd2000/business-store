@@ -22,7 +22,8 @@ import {
   Typography,
   Tag,
   Space,
-  message
+  message,
+  Flex
 } from 'antd';
 import {
   DashboardOutlined,
@@ -33,13 +34,15 @@ import {
   LogoutOutlined,
   GlobalOutlined,
   PlusOutlined,
-  ArrowLeftOutlined
+  ArrowLeftOutlined,
+  ReadOutlined
 } from '@ant-design/icons';
 import { useGetStatsQuery } from '../store/statsSlice';
 import { useGetOrdersQuery, useUpdateOrderStatusMutation } from '../store/ordersSlice';
 import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation } from '../store/productsSlice';
 import { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from '../store/categoriesSlice';
 import { useGetBuyersQuery } from '../store/buyersSlice';
+import { useGetAdminNewsQuery, useCreateNewsMutation, useUpdateNewsMutation, useDeleteNewsMutation } from '../store/newsSlice';
 import { SYSTEM_MESSAGES } from '../constants/messages';
 
 const { Header, Sider, Content } = Layout;
@@ -62,6 +65,16 @@ const categorySchema = z.object({
 
 type ProductFormFields = z.infer<typeof productSchema>;
 type CategoryFormFields = z.infer<typeof categorySchema>;
+
+const newsSchema = z.object({
+  title: z.string().min(1, { message: 'Tiêu đề không được trống' }),
+  author: z.string().min(1, { message: 'Tên tác giả không được trống' }),
+  summary: z.string().optional().default(''),
+  content: z.string().min(1, { message: 'Nội dung bài viết không được trống' }),
+  image_url: z.string().url({ message: 'Đường dẫn ảnh phải là link URL hợp lệ' }).or(z.literal('')),
+});
+
+type NewsFormFields = z.infer<typeof newsSchema>;
 
 interface DashboardProps {
   onLogout: () => void;
@@ -101,11 +114,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   else if (currentPath.includes('/categories') && hasPermission('manage_categories')) activeTabKey = 'categories';
   else if (currentPath.includes('/buyers') && hasPermission('view_buyers')) activeTabKey = 'buyers';
   else if (currentPath.includes('/orders') && hasPermission('manage_orders')) activeTabKey = 'orders';
+  else if (currentPath.includes('/news') && hasPermission('manage_news')) activeTabKey = 'news';
 
   const isAddProduct = currentPath === '/admin/products/add';
   const isEditProduct = currentPath === '/admin/products/edit';
   const isAddCategory = currentPath === '/admin/categories/add';
   const isEditCategory = currentPath === '/admin/categories/edit';
+  const isAddNews = currentPath === '/admin/news/add';
+  const isEditNews = currentPath === '/admin/news/edit';
 
   const queryParams = new URLSearchParams(location.search);
   const editingId = Number(queryParams.get('id'));
@@ -174,28 +190,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
         <Card title="Biểu Đồ Doanh Thu Gần Đây" className="rounded-3xl border-slate-200 shadow-sm">
           {stats?.sales_data.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">Chưa có dữ liệu giao dịch gần đây.</div>
+            <Flex justify="center" className="py-12 text-slate-400 w-full">Chưa có dữ liệu giao dịch gần đây.</Flex>
           ) : (
-            <div className="flex items-end justify-between h-48 pt-4 px-2 border-b border-slate-100">
+            <Flex align="flex-end" justify="space-between" className="h-48 pt-4 px-2 border-b border-slate-100 w-full">
               {stats?.sales_data.map((day: any, idx: number) => {
                 const maxVal = Math.max(...stats.sales_data.map((d: any) => d.total), 1);
                 const pct = (day.total / maxVal) * 100;
                 return (
-                  <div key={idx} className="flex flex-col items-center group w-full">
+                  <Flex vertical align="center" key={idx} className="group w-full">
                     <span className="text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 mb-1 transition-all">
                       {formatPrice(day.total)}
                     </span>
-                    <div 
+                    <Flex 
                       className="w-12 bg-violet-500 rounded-t-lg group-hover:bg-violet-600 transition-all shadow-sm"
                       style={{ height: `${Math.max(pct, 8)}%` }}
-                    ></div>
+                    />
                     <span className="text-[10px] font-medium text-slate-400 mt-2">
                       {day.date}
                     </span>
-                  </div>
+                  </Flex>
                 );
               })}
-            </div>
+            </Flex>
           )}
         </Card>
 
@@ -220,10 +236,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 title: 'Khách hàng',
                 key: 'customer',
                 render: (_, record) => (
-                  <div>
-                    <div className="font-semibold text-slate-800">{record.customer_name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{record.customer_phone}</div>
-                  </div>
+                  <Flex vertical>
+                    <Typography.Text className="font-semibold text-slate-800">{record.customer_name}</Typography.Text>
+                    <Typography.Text className="text-xs text-slate-400 mt-0.5">{record.customer_phone}</Typography.Text>
+                  </Flex>
                 )
               },
               {
@@ -290,7 +306,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     return (
       <Space direction="vertical" size="large" className="w-full">
-        <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+        <Flex justify="space-between" align="center" className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm w-full">
           <Input.Search
             placeholder="Tìm kiếm sản phẩm theo tên..."
             value={searchInput}
@@ -310,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               Thêm sản phẩm mới
             </Button>
           )}
-        </div>
+        </Flex>
 
         <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
           <Table
@@ -329,10 +345,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 dataIndex: 'name',
                 key: 'name',
                 render: (name, record) => (
-                  <div>
-                    <div className="font-bold text-slate-800">{name}</div>
-                    <div className="text-xs text-slate-400 mt-1 truncate max-w-xs">{record.description || 'Chưa có mô tả'}</div>
-                  </div>
+                  <Flex vertical>
+                    <Typography.Text className="font-bold text-slate-800">{name}</Typography.Text>
+                    <Typography.Text className="text-xs text-slate-400 mt-1 truncate max-w-xs">{record.description || 'Chưa có mô tả'}</Typography.Text>
+                  </Flex>
                 )
               },
               {
@@ -605,7 +621,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     return (
       <Space direction="vertical" size="large" className="w-full">
-        <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+        <Flex justify="space-between" align="center" className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm w-full">
           <Input.Search
             placeholder="Tìm kiếm danh mục..."
             value={searchInput}
@@ -623,7 +639,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           >
             Thêm danh mục mới
           </Button>
-        </div>
+        </Flex>
 
         <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
           <Table
@@ -796,6 +812,279 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   };
 
   // ==========================================
+  // TAB COMPONENT: NEWS LIST
+  // ==========================================
+  const NewsTab = () => {
+    const [searchInput, setSearchInput] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const { data: news = [], isLoading, isFetching, error } = useGetAdminNewsQuery({ search: debouncedSearch });
+    const [deleteNews] = useDeleteNewsMutation();
+
+    useEffect(() => {
+      const timer = setTimeout(() => setDebouncedSearch(searchInput), 400);
+      return () => clearTimeout(timer);
+    }, [searchInput]);
+
+    const handleDelete = async (id: number) => {
+      try {
+        const res = await deleteNews(id).unwrap();
+        message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+      } catch (err: any) {
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
+      }
+    };
+
+    if (isLoading) return <Spin className="block my-12 mx-auto" size="large" />;
+    if (error) return <Alert type="error" message="Lỗi tải danh sách tin tức" showIcon className="my-6" />;
+
+    return (
+      <Space direction="vertical" size="large" className="w-full">
+        <Flex justify="space-between" align="center" className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm w-full">
+          <Input.Search
+            placeholder="Tìm kiếm bài viết..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            loading={isFetching}
+            style={{ width: 300 }}
+            allowClear
+          />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/admin/news/add')}
+            className="bg-violet-600 border-none font-bold rounded-xl"
+            style={{ backgroundColor: '#7c3aed' }}
+          >
+            Thêm bài viết mới
+          </Button>
+        </Flex>
+
+        <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
+          <Table
+            dataSource={news}
+            loading={isFetching}
+            rowKey="id"
+            columns={[
+              {
+                title: 'Ảnh đại diện',
+                dataIndex: 'image_url',
+                key: 'image_url',
+                render: (url, record) => <img src={url} alt={record.title} className="w-16 h-10 object-cover rounded-lg border" />
+              },
+              {
+                title: 'Tiêu đề',
+                dataIndex: 'title',
+                key: 'title',
+                render: (title) => <span className="font-bold text-slate-800">{title}</span>
+              },
+              {
+                title: 'Tác giả',
+                dataIndex: 'author',
+                key: 'author',
+                render: (author) => <span className="font-semibold text-slate-650">{author}</span>
+              },
+              {
+                title: 'Ngày tạo',
+                dataIndex: 'created_at',
+                key: 'created_at',
+                render: (date) => <span className="text-slate-500 font-semibold">{new Date(date).toLocaleDateString('vi-VN')}</span>
+              },
+              {
+                title: 'Hành động',
+                key: 'actions',
+                align: 'right',
+                render: (_, record) => (
+                  <Space>
+                    <Button
+                      type="text"
+                      onClick={() => navigate(`/admin/news/edit?id=${record.id}`)}
+                      className="text-violet-600 hover:bg-violet-50 font-bold rounded-lg"
+                    >
+                      Sửa
+                    </Button>
+                    <Popconfirm
+                      title="Bạn có chắc chắn muốn xóa bài viết này?"
+                      okText="Xóa ngay"
+                      cancelText="Hủy bỏ"
+                      onConfirm={() => handleDelete(record.id)}
+                    >
+                      <Button type="text" danger className="font-bold rounded-lg">
+                        Xóa
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                )
+              }
+            ]}
+          />
+        </Card>
+      </Space>
+    );
+  };
+
+  // ==========================================
+  // TAB COMPONENT: NEWS ADD/EDIT FORM
+  // ==========================================
+  const NewsFormTab = () => {
+    const isEdit = location.pathname.includes('/edit');
+    const { data: news = [] } = useGetAdminNewsQuery();
+    const [createNews] = useCreateNewsMutation();
+    const [updateNews] = useUpdateNewsMutation();
+
+    const {
+      control,
+      handleSubmit,
+      reset,
+      formState: { errors }
+    } = useForm<NewsFormFields>({
+      resolver: zodResolver(newsSchema),
+      defaultValues: {
+        title: '',
+        author: 'Ban biên tập',
+        summary: '',
+        content: '',
+        image_url: ''
+      }
+    });
+
+    useEffect(() => {
+      if (isEdit && editingId && news.length > 0) {
+        const article = news.find(n => n.id === editingId);
+        if (article) {
+          reset({
+            title: article.title,
+            author: article.author || 'Ban biên tập',
+            summary: article.summary || '',
+            content: article.content,
+            image_url: article.image_url || ''
+          });
+        }
+      } else if (!isEdit) {
+        reset({
+          title: '',
+          author: 'Ban biên tập',
+          summary: '',
+          content: '',
+          image_url: ''
+        });
+      }
+    }, [isEdit, editingId, news, reset]);
+
+    const onSubmit = async (data: NewsFormFields) => {
+      try {
+        if (isEdit && editingId) {
+          const res = await updateNews({ id: editingId, data }).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+        } else {
+          const res = await createNews(data).unwrap();
+          message.success(res?.message || SYSTEM_MESSAGES.SUCCESS);
+        }
+        navigate('/admin/news');
+      } catch (err: any) {
+        message.error(err.data?.message || SYSTEM_MESSAGES.ERROR);
+      }
+    };
+
+    return (
+      <Card
+        title={
+          <Space>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/news')} type="text" />
+            <span className="font-bold">{isEdit ? 'Chỉnh sửa thông tin bài viết' : 'Thêm bài viết mới'}</span>
+          </Space>
+        }
+        className="max-w-3xl rounded-3xl border-slate-200 shadow-sm"
+      >
+        <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
+          <Row gutter={16}>
+            <Col span={16}>
+              <Form.Item
+                label={<span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tiêu đề bài viết</span>}
+                validateStatus={errors.title ? 'error' : ''}
+                help={errors.title?.message}
+              >
+                <Controller
+                  name="title"
+                  control={control}
+                  render={({ field }) => (
+                    <Input {...field} placeholder="Nhập tiêu đề hấp dẫn..." className="rounded-xl" />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label={<span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tác giả</span>}
+                validateStatus={errors.author ? 'error' : ''}
+                help={errors.author?.message}
+              >
+                <Controller
+                  name="author"
+                  control={control}
+                  render={({ field }) => (
+                    <Input {...field} placeholder="Ví dụ: Xuân Trường..." className="rounded-xl" />
+                  )}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label={<span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Đường dẫn ảnh đại diện (Cover Image URL)</span>}
+            validateStatus={errors.image_url ? 'error' : ''}
+            help={errors.image_url?.message}
+          >
+            <Controller
+              name="image_url"
+              control={control}
+              render={({ field }) => (
+                <Input {...field} placeholder="https://images.unsplash.com/..." className="rounded-xl" />
+              )}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={<span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tóm tắt ngắn (Summary)</span>}
+            validateStatus={errors.summary ? 'error' : ''}
+            help={errors.summary?.message}
+          >
+            <Controller
+              name="summary"
+              control={control}
+              render={({ field }) => (
+                <Input.TextArea {...field} rows={3} placeholder="Mô tả ngắn gọn nội dung bài viết..." className="rounded-xl" />
+              )}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={<span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Nội dung chi tiết (HTML hỗ trợ)</span>}
+            validateStatus={errors.content ? 'error' : ''}
+            help={errors.content?.message}
+          >
+            <Controller
+              name="content"
+              control={control}
+              render={({ field }) => (
+                <Input.TextArea {...field} rows={12} placeholder="Nội dung bài viết, sử dụng thẻ HTML nếu cần thiết..." className="rounded-xl" />
+              )}
+            />
+          </Form.Item>
+
+          <Form.Item className="mb-0 text-right">
+            <Space>
+              <Button onClick={() => navigate('/admin/news')} className="rounded-xl">Hủy bỏ</Button>
+              <Button type="primary" htmlType="submit" className="bg-violet-600 border-none font-bold rounded-xl" style={{ backgroundColor: '#7c3aed' }}>
+                Lưu bài viết
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Card>
+    );
+  };
+
+  // ==========================================
   // TAB COMPONENT: BUYERS
   // ==========================================
   const BuyersTab = () => {
@@ -813,7 +1102,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     return (
       <Space direction="vertical" size="large" className="w-full">
-        <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+        <Flex justify="space-between" align="center" className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm w-full">
           <Text type="secondary" className="text-sm font-semibold">Khách hàng đăng ký đặt mua sản phẩm</Text>
           <Input.Search
             placeholder="Tìm kiếm khách hàng theo tên hoặc SĐT..."
@@ -823,7 +1112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             style={{ width: 350 }}
             allowClear
           />
-        </div>
+        </Flex>
 
         <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
           <Table
@@ -907,7 +1196,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     return (
       <Space direction="vertical" size="large" className="w-full">
-        <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+        <Flex justify="space-between" align="center" className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm w-full">
           <Text type="secondary" className="text-sm font-semibold">Xem thông tin và quản lý trạng thái đơn hàng</Text>
           <Input.Search
             placeholder="Tìm kiếm theo mã đơn, tên hoặc SĐT..."
@@ -917,7 +1206,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             style={{ width: 350 }}
             allowClear
           />
-        </div>
+        </Flex>
 
         <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
           <Table
@@ -935,10 +1224,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 title: 'Khách hàng',
                 key: 'customer',
                 render: (_, record) => (
-                  <div>
-                    <div className="font-semibold text-slate-800">{record.customer_name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{record.customer_phone}</div>
-                  </div>
+                  <Flex vertical>
+                    <Typography.Text className="font-semibold text-slate-800">{record.customer_name}</Typography.Text>
+                    <Typography.Text className="text-xs text-slate-400 mt-0.5">{record.customer_phone}</Typography.Text>
+                  </Flex>
                 )
               },
               {
@@ -1003,12 +1292,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       
       {/* LEFT SIDEBAR */}
       <Sider width={260} className="bg-slate-900 shadow-lg" breakpoint="lg" style={{ minHeight: '100vh', position: 'relative' }}>
-        <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800">
+        <Flex align="center" className="h-16 px-6 bg-slate-950 border-b border-slate-800 w-full">
           <span className="text-lg font-black text-white tracking-wider flex items-center gap-2">
             <span className="bg-violet-600 text-white rounded p-1 text-xs">LX</span>
             LX Store <span className="text-[10px] text-violet-400 font-bold border border-violet-800 px-1.5 py-0.5 rounded">ADMIN</span>
           </span>
-        </div>
+        </Flex>
 
         <Menu
           theme="dark"
@@ -1045,11 +1334,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               icon: <FileTextOutlined />,
               label: 'Đơn hàng',
               onClick: () => navigate('/admin/orders')
+            },
+            hasPermission('manage_news') && {
+              key: 'news',
+              icon: <ReadOutlined />,
+              label: 'Tin tức',
+              onClick: () => navigate('/admin/news')
             }
           ].filter(Boolean) as any}
         />
 
-        <div className="absolute bottom-0 w-full p-4 bg-slate-950 border-t border-slate-850 space-y-2">
+        <Flex vertical gap={8} className="absolute bottom-0 w-full p-4 bg-slate-950 border-t border-slate-850">
           <a
             href="http://127.0.0.1:8000"
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold transition-all no-underline"
@@ -1069,7 +1364,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           >
             Đăng xuất
           </Button>
-        </div>
+        </Flex>
       </Sider>
 
       {/* RIGHT MAIN CONTENT */}
@@ -1085,6 +1380,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             )}
             {activeTabKey === 'buyers' && 'Danh Sách Người Mua'}
             {activeTabKey === 'orders' && 'Quản Lý Đơn Hàng'}
+            {activeTabKey === 'news' && (
+              isAddNews ? 'Thêm Bài Viết Mới' : isEditNews ? 'Chỉnh Sửa Bài Viết' : 'Quản Lý Tin Tức'
+            )}
           </Title>
           <Space size="middle">
             <Text type="secondary" className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full uppercase">
@@ -1113,6 +1411,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             )}
             {hasPermission('view_buyers') && <Route path="buyers" element={<BuyersTab />} />}
             {hasPermission('manage_orders') && <Route path="orders" element={<OrdersTab />} />}
+            {hasPermission('manage_news') && (
+              <>
+                <Route path="news" element={<NewsTab />} />
+                <Route path="news/add" element={<NewsFormTab />} />
+                <Route path="news/edit" element={<NewsFormTab />} />
+              </>
+            )}
             
             <Route 
               path="*" 
@@ -1147,26 +1452,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           width={650}
         >
           <Space direction="vertical" size="large" className="w-full pt-4">
-            <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-2xl border">
-              <div>
+            <Row gutter={[24, 24]} className="bg-slate-50 p-4 rounded-2xl border w-full">
+              <Col xs={24} sm={12}>
                 <Text type="secondary" className="text-xs font-bold uppercase tracking-wide block mb-2">Thông tin khách hàng</Text>
-                <div className="font-semibold text-sm text-slate-800">{selectedOrder.customer_name}</div>
-                <div className="text-xs text-slate-500 mt-1">SĐT: <span className="font-bold text-violet-600">{selectedOrder.customer_phone}</span></div>
-                <div className="text-xs text-slate-500 mt-1">Mật khẩu mặc định: <span className="font-semibold">`a12345`</span></div>
-              </div>
-              <div>
+                <Typography.Text className="font-semibold text-sm text-slate-800 block">{selectedOrder.customer_name}</Typography.Text>
+                <Typography.Text className="text-xs text-slate-500 mt-1 block">SĐT: <span className="font-bold text-violet-600">{selectedOrder.customer_phone}</span></Typography.Text>
+                <Typography.Text className="text-xs text-slate-500 mt-1 block">Mật khẩu mặc định: <span className="font-semibold">`a12345`</span></Typography.Text>
+              </Col>
+              <Col xs={24} sm={12}>
                 <Text type="secondary" className="text-xs font-bold uppercase tracking-wide block mb-2">Hình thức & Vận chuyển</Text>
-                <div className="text-xs text-slate-650">Hình thức: <span className="font-semibold">{selectedOrder.payment_method}</span></div>
-                <div className="text-xs text-slate-650 mt-1">Trạng thái: <span className="font-semibold">{selectedOrder.status}</span></div>
-                <div className="text-xs text-slate-650 mt-1">Địa chỉ nhận: <span className="font-semibold">{selectedOrder.shipping_address}</span></div>
-              </div>
-            </div>
+                <Typography.Text className="text-xs text-slate-650 block">Hình thức: <span className="font-semibold">{selectedOrder.payment_method}</span></Typography.Text>
+                <Typography.Text className="text-xs text-slate-650 mt-1 block">Trạng thái: <span className="font-semibold">{selectedOrder.status}</span></Typography.Text>
+                <Typography.Text className="text-xs text-slate-650 mt-1 block">Địa chỉ nhận: <span className="font-semibold">{selectedOrder.shipping_address}</span></Typography.Text>
+              </Col>
+            </Row>
 
-            <div>
+            <Flex vertical className="w-full">
               <Text type="secondary" className="text-xs font-bold uppercase tracking-wide block mb-2">Sản phẩm đã mua</Text>
               <Table
                 dataSource={selectedOrder.items}
-                rowKey={(item, idx) => idx}
+                rowKey={(_: any, idx?: number) => idx || 0}
                 pagination={false}
                 size="small"
                 className="border rounded-2xl overflow-hidden"
@@ -1175,36 +1480,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     title: 'Tên sản phẩm',
                     dataIndex: ['product', 'name'],
                     key: 'product_name',
-                    render: (name) => <span className="font-semibold text-slate-800">{name || 'Sản phẩm đã xóa'}</span>
+                    render: (name: string) => <span className="font-semibold text-slate-800">{name || 'Sản phẩm đã xóa'}</span>
                   },
                   {
                     title: 'Đơn giá',
                     dataIndex: 'price',
                     key: 'price',
                     align: 'center',
-                    render: (price) => <span className="text-slate-700 font-medium">{formatPrice(price)}</span>
+                    render: (price: number) => <span className="text-slate-700 font-medium">{formatPrice(price)}</span>
                   },
                   {
                     title: 'Số lượng',
                     dataIndex: 'quantity',
                     key: 'quantity',
                     align: 'center',
-                    render: (qty) => <span className="font-bold text-slate-800">{qty} món</span>
+                    render: (qty: number) => <span className="font-bold text-slate-800">{qty} món</span>
                   },
                   {
                     title: 'Thành tiền',
                     key: 'item_total',
                     align: 'right',
-                    render: (_, record) => <span className="font-bold text-slate-900">{formatPrice(record.price * record.quantity)}</span>
+                    render: (_: any, record: any) => <span className="font-bold text-slate-900">{formatPrice(record.price * record.quantity)}</span>
                   }
                 ]}
               />
-            </div>
+            </Flex>
 
-            <div className="flex justify-between items-center bg-violet-50 p-4 rounded-2xl border border-violet-100">
+            <Flex justify="space-between" align="center" className="bg-violet-50 p-4 rounded-2xl border border-violet-100 w-full">
               <span className="text-sm font-bold text-violet-800">TỔNG TIỀN THANH TOÁN:</span>
               <span className="text-lg font-black text-violet-900">{formatPrice(selectedOrder.total_amount)}</span>
-            </div>
+            </Flex>
           </Space>
         </Modal>
       )}

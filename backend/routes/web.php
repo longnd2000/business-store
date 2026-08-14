@@ -12,6 +12,11 @@ Route::get('/', function () {
     ]);
 });
 
+// API Interactive Tester Route
+Route::get('/api-tester', function () {
+    return view('api_tester');
+});
+
 // Dev Tools (Migrations & Seeding helper)
 Route::get('/dev/migrate', function () {
     try {

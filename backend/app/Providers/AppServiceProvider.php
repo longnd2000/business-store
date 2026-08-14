@@ -11,7 +11,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Bindings for Repositories
         $this->app->bind(
             \App\Repositories\Interfaces\IOrderRepository::class,
             \App\Repositories\OrderRepository::class
@@ -30,6 +29,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Repositories\Interfaces\IUserRepository::class,
             \App\Repositories\UserRepository::class
+        );
+
+        $this->app->bind(
+            \App\Repositories\Interfaces\INewsRepository::class,
+            \App\Repositories\NewsRepository::class
         );
 
         // Bindings for Services
